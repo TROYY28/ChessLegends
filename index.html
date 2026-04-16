@@ -2,39 +2,461 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chess Legends</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>CHESS LEGENDS - STREETFIGHTER EDITION</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, setDoc, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
+
+        window.FirebaseSDK = { 
+            initializeApp, getFirestore, collection, addDoc, onSnapshot, 
+            query, doc, setDoc, getDocs, getAuth, signInAnonymously, 
+            onAuthStateChanged, signInWithCustomToken, serverTimestamp 
+        };
+    </script>
+
     <style>
-        body {
-            font-size: 16px; /* Base font size increased for better readability */
-            padding: 10px;
+        @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;700;900&display=swap');
+        
+        :root { 
+            --accent-pink: #ff00ff;
+            --accent-purple: #9d00ff;
+            --accent-green: #00ff88;
+            --deep-black: #020202;
+            --pure-white: #ffffff;
         }
-        h1 {
-            font-size: 2.5em; /* Larger heading for better visibility */
+        
+        body { 
+            background-color: var(--deep-black); 
+            color: var(--pure-white); 
+            font-family: 'Inter', sans-serif; 
+            overflow-x: hidden; 
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(157, 0, 255, 0.2) 0%, transparent 40%),
+                radial-gradient(circle at 80% 70%, rgba(255, 0, 255, 0.15) 0%, transparent 40%);
         }
-        button {
-            padding: 15px 30px; /* Increased button size */
-            font-size: 1.2em; /* Larger font size for buttons */
-            margin: 10px 0;
+        
+        .impact-font { font-family: 'Archivo Black', sans-serif; }
+        .title-main { 
+            font-size: clamp(2.5rem, 8vw, 5rem); 
+            line-height: 0.9; 
+            letter-spacing: -0.05em; 
+            text-transform: uppercase; 
+            font-style: italic; 
+            font-weight: 900; 
+            background: linear-gradient(to right, #fff, var(--accent-purple), var(--accent-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
-        .container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
+        
+        .neon-text-pink { text-shadow: 0 0 15px rgba(255, 0, 255, 1); }
+        
+        .btn-aggressive { 
+            background: linear-gradient(45deg, var(--accent-purple), var(--accent-pink)); 
+            clip-path: polygon(5% 0, 100% 0, 95% 100%, 0% 100%); 
+            transition: all 0.2s ease;
         }
-        @media (min-width: 600px) {
-            .container {
-                flex-direction: row;
-            }
+        .btn-aggressive:active { transform: scale(0.95); opacity: 0.8; }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            transition: all 0.5s ease;
         }
+        .status-dot.denied { background-color: #ff0044; box-shadow: 0 0 10px #ff0044; animation: pulse 1.5s infinite; }
+        .status-dot.granted { background-color: var(--accent-green); box-shadow: 0 0 15px var(--accent-green); animation: none; }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .prize-image-container {
+            border: 2px solid var(--accent-purple);
+            border-radius: 20px;
+            overflow: hidden;
+            background: #000;
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: transparent; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Welcome to Chess Legends</h1>
-        <button>Start Game</button>
-        <button>Settings</button>
-    </div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useMemo, useEffect, useRef } = React;
+
+        const ADMIN_PASS = "ciroc@23"; 
+        const INITIAL_PLAYERS = [
+            "aviwefeni", "Moreiroh32", "Ricardotobbs", "Tornadowindo", "KING_JASON23", "TheHustler15", 
+            "JoelMart", "Kallactus10", "Blackjacks_C1", "Lexis150320", "Psychopath28", "Kelsey01", 
+            "T9_Y2G_TOBBS", "Ocean00007", "Papieliens", "terrorizingknight", "Daddy2706", "AbdarahimSalem", 
+            "jaxjacobs", "matt_lee_official", "Booi007", "BARBARIAN135", "Gouwsie2", "Eazi47", "Nevigator", 
+            "Chris_1971", "Marvinbrown66", "Marshurome", "VICTORY1027", "TRIBALCHIEF6740", "Rio_Y2G", 
+            "MS42022", "BT_Y2G", "EarlBass", "Takundatheknight", "Vickerkings", "Random_13", "Javie-chess", 
+            "JacquesHarmse06", "DeonHarmse", "Lemuel_1981", "ocean25", "Duren08", "Manjaro1963", "konngxxl", 
+            "AI2018", "Leehenchen", "Meksooool", "lost441", "JacoVanNiekerk", "Padoul", "Jerhomeow", "King9ICE", 
+            "LawrenceRGosling", "SphaPablo", "fakka55brown", "zoltan007", "eltonghost", "Duedon", "Mavusa"
+        ];
+
+        const PLAYER_PHOTOS = { 
+            "JoelMart": "joelmart.jpeg", 
+            "Mavusa": "mavusa.jpeg", 
+            "zoltan007": "zoltan.jpeg" 
+        };
+
+        const QUOTES = [
+            "Chess is the struggle against the error.",
+            "The move is there, but you must see it.",
+            "Avoid the crowd. Do your own thinking independently.",
+            "Chess is mental torture.",
+            "Winning isn't everything, but wanting to win is.",
+            "Strategy requires thought, tactics require observation.",
+            "A master sometimes declines even the best sacrifice."
+        ];
+
+        const Avatar = ({ name, size = "md", glow = false, crown = null }) => {
+            const photo = PLAYER_PHOTOS[name];
+            const sizeClasses = {
+                sm: "w-8 h-8",
+                md: "w-12 h-12",
+                lg: "w-28 h-28 border-2 border-purple-500/50",
+                xl: "w-40 h-40 border-4 border-pink-500"
+            };
+            
+            return (
+                <div className={`${sizeClasses[size]} rounded-full bg-zinc-900 flex-shrink-0 relative flex items-center justify-center border border-white/10 ${glow ? 'shadow-[0_0_20px_rgba(255,0,255,0.6)]' : ''}`}>
+                    {crown && <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-3xl drop-shadow-[0_0_10px_rgba(255,255,255,0.5)] z-20">{crown}</div>}
+                    <div className="w-full h-full rounded-full overflow-hidden flex items-center justify-center">
+                        {photo ? (
+                            <img 
+                                src={photo} 
+                                className="w-full h-full object-cover" 
+                                onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} 
+                            />
+                        ) : null}
+                        <div className="w-full h-full items-center justify-center bg-zinc-800 text-zinc-600 font-black italic text-[10px]" style={{ display: photo ? 'none' : 'flex' }}>
+                            {name?.substring(0, 2).toUpperCase() || 'SF'}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [db, setDb] = useState(null);
+            const [events, setEvents] = useState([]);
+            const [messages, setMessages] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [isAdmin, setIsAdmin] = useState(false);
+            const [passInput, setPassInput] = useState("");
+            const [chatInput, setChatInput] = useState("");
+            const [username, setUsername] = useState(() => localStorage.getItem('sf_username') || "WARRIOR");
+            const [winners, setWinners] = useState({ first: "", second: "", third: "" });
+            const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+            const [syncing, setSyncing] = useState(false);
+            
+            const scrollRef = useRef(null);
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'sf26-legends-prod';
+
+            const dailyQuote = useMemo(() => {
+                const day = new Date().getDate();
+                return QUOTES[day % QUOTES.length];
+            }, []);
+
+            useEffect(() => {
+                const initFirebase = async () => {
+                    try {
+                        const { initializeApp, getFirestore, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = window.FirebaseSDK;
+                        const firebaseConfig = JSON.parse(__firebase_config);
+                        const app = initializeApp(firebaseConfig);
+                        const auth = getAuth(app);
+                        const firestore = getFirestore(app);
+                        setDb(firestore);
+                        
+                        const initAuth = async () => {
+                            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                                await signInWithCustomToken(auth, __initial_auth_token);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                        };
+                        await initAuth();
+                        onAuthStateChanged(auth, setUser);
+                    } catch (e) { 
+                        console.error("Firebase init error", e); 
+                        setLoading(false);
+                    }
+                };
+                initFirebase();
+            }, []);
+
+            useEffect(() => {
+                if (!user || !db) return;
+                const { collection, onSnapshot, query } = window.FirebaseSDK;
+                
+                // History Listener
+                const qHistory = collection(db, 'artifacts', appId, 'public', 'data', 'history');
+                const unsubHistory = onSnapshot(qHistory, (snapshot) => {
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    // Sort by date then by timestamp if date is same
+                    setEvents(data.sort((a, b) => {
+                        const dateA = new Date(a.date);
+                        const dateB = new Date(b.date);
+                        if (dateB - dateA !== 0) return dateB - dateA;
+                        return (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0);
+                    }));
+                    setLoading(false);
+                }, (err) => {
+                    console.error("Firestore History Error:", err);
+                    setLoading(false);
+                });
+
+                // Forum Listener
+                const qChat = collection(db, 'artifacts', appId, 'public', 'data', 'forum');
+                const unsubChat = onSnapshot(qChat, (snapshot) => {
+                    const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setMessages(data.sort((a, b) => (a.timestamp?.seconds || 0) - (b.timestamp?.seconds || 0)));
+                    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 200);
+                }, (err) => console.error("Chat Error:", err));
+
+                return () => { unsubHistory(); unsubChat(); };
+            }, [user, db]);
+
+            const leaderboard = useMemo(() => {
+                const scores = {};
+                INITIAL_PLAYERS.forEach(p => scores[p] = { name: p, points: 0, gold: 0 });
+                events.forEach(event => {
+                    if (scores[event.first]) { scores[event.first].points += 3; scores[event.first].gold += 1; }
+                    if (scores[event.second]) { scores[event.second].points += 2; }
+                    if (scores[event.third]) { scores[event.third].points += 1; }
+                });
+                return Object.values(scores).sort((a, b) => b.points - a.points || b.gold - a.gold);
+            }, [events]);
+
+            const top3 = leaderboard.slice(0, 3);
+
+            const handleAddEvent = async () => {
+                if (!isAdmin) return;
+                if (!winners.first || !winners.second || !winners.third) return;
+                if (!db || syncing || !user) return;
+                
+                setSyncing(true);
+                const { addDoc, collection, serverTimestamp } = window.FirebaseSDK;
+                
+                try {
+                    const historyRef = collection(db, 'artifacts', appId, 'public', 'data', 'history');
+                    await addDoc(historyRef, {
+                        first: winners.first, 
+                        second: winners.second, 
+                        third: winners.third,
+                        date: selectedDate, 
+                        timestamp: serverTimestamp() // Correct server timestamp
+                    });
+                    
+                    // Reset UI
+                    setWinners({ first: "", second: "", third: "" });
+                } catch (err) {
+                    console.error("Inject failed:", err);
+                } finally { 
+                    setSyncing(false); 
+                }
+            };
+
+            const sendChatMessage = async (e) => {
+                e.preventDefault();
+                if (!chatInput.trim() || !db || !user) return;
+                const { addDoc, collection, serverTimestamp } = window.FirebaseSDK;
+                try {
+                    localStorage.setItem('sf_username', username);
+                    await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'forum'), {
+                        text: chatInput, 
+                        author: username, 
+                        timestamp: serverTimestamp()
+                    });
+                    setChatInput("");
+                } catch (err) {
+                    console.error("Chat send error:", err);
+                }
+            };
+
+            if (loading) return (
+                <div className="min-h-screen flex items-center justify-center bg-black">
+                    <div className="text-pink-600 impact-font animate-pulse text-4xl italic uppercase text-center neon-text-pink">INITIALIZING ARENA...</div>
+                </div>
+            );
+
+            return (
+                <div className="max-w-[1400px] mx-auto p-4 md:p-8">
+                    {/* Header */}
+                    <header className="mb-10 flex flex-col md:flex-row justify-between items-start gap-6">
+                        <div className="flex-grow">
+                            <div className="flex items-center gap-4 mb-2">
+                                <div className={`status-dot ${isAdmin ? 'granted' : 'denied'}`}></div>
+                                <span className={`text-[10px] font-black uppercase tracking-widest ${isAdmin ? 'text-green-400' : 'text-red-500'}`}>
+                                    {isAdmin ? 'ADMIN ACCESS GRANTED' : 'RESTRICTED ACCESS'}
+                                </span>
+                                <div className="h-px bg-zinc-800 flex-grow ml-4"></div>
+                            </div>
+                            <h1 className="title-main impact-font">CHESS LEGENDS</h1>
+                            <p className="text-zinc-500 text-xs font-black italic uppercase tracking-tighter">Streetfighter Edition • Year 1</p>
+                        </div>
+                        <div className="flex flex-col items-end gap-3">
+                             <div className="bg-zinc-900/50 p-4 border border-zinc-800 rounded-xl w-full md:w-auto">
+                                <span className="text-[9px] font-black text-pink-500 block mb-1 uppercase tracking-widest">Daily Intel (8:00 AM)</span>
+                                <p className="text-xs italic font-bold text-zinc-300 max-w-[250px]">"{dailyQuote}"</p>
+                            </div>
+                            <input 
+                                type="password" 
+                                placeholder="ENTER ACCESS CODE" 
+                                className={`bg-zinc-950 px-4 py-2 rounded border border-zinc-800 text-[10px] font-black uppercase outline-none transition-all w-48 ${isAdmin ? 'border-green-500 text-green-400' : 'focus:border-pink-600'}`} 
+                                value={passInput} 
+                                onChange={(e) => { 
+                                    setPassInput(e.target.value); 
+                                    if (e.target.value === ADMIN_PASS) setIsAdmin(true); 
+                                }} 
+                                disabled={isAdmin}
+                            />
+                        </div>
+                    </header>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16">
+                        {/* Left Sidebar */}
+                        <div className="lg:col-span-3 space-y-6">
+                            <div className="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl">
+                                <h3 className="text-[10px] font-black uppercase text-purple-500 mb-4 tracking-widest italic">Live Arena</h3>
+                                <a href="https://lichess.org/tournament" target="_blank" className="block p-3 bg-pink-600/10 border border-pink-600/30 rounded text-xs font-black italic uppercase hover:bg-pink-600/20 transition-all text-pink-400 text-center">Tournament Link</a>
+                            </div>
+                            
+                            <div className="prize-image-container">
+                                <img src="pc.png" alt="Grand Prize" className="w-full h-48 object-cover" onError={(e) => e.target.src='https://placehold.co/600x400/000000/FFFFFF?text=GRAND+PRIZE'} />
+                                <div className="p-4 bg-zinc-900/90 border-t border-purple-900/50">
+                                    <span className="text-[10px] font-black uppercase text-pink-500">Season Prize</span>
+                                    <p className="text-xs font-bold text-white uppercase italic">Ultimate Gaming Rig</p>
+                                </div>
+                            </div>
+
+                            <div className="bg-zinc-900/40 border border-zinc-800 p-6 rounded-2xl">
+                                <h3 className="text-[10px] font-black uppercase text-zinc-500 mb-4 tracking-widest italic">The Vault</h3>
+                                <div className="space-y-2 max-h-40 overflow-y-auto custom-scroll text-zinc-600 italic text-[10px] font-black uppercase">
+                                    No archives available.
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Center Rankings */}
+                        <div className="lg:col-span-6 space-y-12">
+                            <section className="flex items-end justify-center gap-2 md:gap-4 h-64">
+                                <div className="flex flex-col items-center flex-1">
+                                    <Avatar name={top3[1]?.name} size="md" crown="🥈" />
+                                    <div className="bg-zinc-900 w-full h-24 border-x border-t border-zinc-800 mt-2 flex items-center justify-center">
+                                        <span className="text-4xl font-black text-white/5 italic">02</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-center flex-1 z-10">
+                                    <Avatar name={top3[0]?.name} size="lg" glow={true} crown="👑" />
+                                    <div className="bg-gradient-to-t from-pink-600/20 to-transparent w-full h-40 border-x border-t border-pink-500/50 mt-2 flex items-center justify-center relative">
+                                        <span className="text-6xl font-black text-white/10 italic">01</span>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col items-center flex-1">
+                                    <Avatar name={top3[2]?.name} size="md" crown="🥉" />
+                                    <div className="bg-zinc-900 w-full h-20 border-x border-t border-zinc-800 mt-2 flex items-center justify-center">
+                                        <span className="text-3xl font-black text-white/5 italic">03</span>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <div className="space-y-2">
+                                <h2 className="text-xl impact-font italic uppercase mb-6 flex items-center gap-3">
+                                    <div className="h-6 w-1 bg-pink-500"></div> Hall of Legends
+                                </h2>
+                                <div className="max-h-[500px] overflow-y-auto custom-scroll space-y-1">
+                                    {leaderboard.map((player, idx) => (
+                                        <div key={player.name} className="flex items-center p-3 bg-zinc-900/20 border border-white/5 rounded hover:bg-zinc-900/40 transition-all">
+                                            <span className="w-8 text-[10px] font-black italic text-zinc-700">{(idx + 1).toString().padStart(2, '0')}</span>
+                                            <Avatar name={player.name} size="sm" />
+                                            <span className="ml-3 flex-grow font-black uppercase italic text-sm text-zinc-200">{player.name}</span>
+                                            <span className="text-xl font-black italic text-pink-500">{player.points}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Right Sidebar Admin & Chat */}
+                        <div className="lg:col-span-3 space-y-8">
+                            <div className={`p-6 rounded-2xl border-2 transition-all duration-500 ${isAdmin ? 'bg-zinc-900 border-green-500 shadow-[0_0_30px_rgba(34,197,94,0.1)]' : 'bg-zinc-950 border-zinc-900 opacity-20 pointer-events-none'}`}>
+                                <h3 className="text-[10px] font-black uppercase italic tracking-widest mb-6 text-green-400">Combat Log Injection</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[8px] font-black text-zinc-500 uppercase block mb-1">Combat Date</label>
+                                        <input type="date" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} className="w-full bg-black border border-zinc-800 p-2 rounded text-[10px] font-bold outline-none text-white focus:border-green-500" />
+                                    </div>
+                                    {['first', 'second', 'third'].map((pos) => (
+                                        <div key={pos} className="flex items-center gap-2">
+                                            <Avatar name={winners[pos]} size="sm" />
+                                            <select className="flex-grow bg-black p-2 border border-zinc-800 rounded text-[10px] font-black uppercase text-white outline-none focus:border-green-500" value={winners[pos]} onChange={e => setWinners({...winners, [pos]: e.target.value})}>
+                                                <option value="">{pos.toUpperCase()} PLACE...</option>
+                                                {INITIAL_PLAYERS.sort().map(p => <option key={p} value={p}>{p}</option>)}
+                                            </select>
+                                        </div>
+                                    ))}
+                                    <button 
+                                        onClick={handleAddEvent} 
+                                        disabled={syncing || !winners.first || !winners.second || !winners.third}
+                                        className={`w-full btn-aggressive text-white py-3 font-black uppercase italic text-[10px] tracking-widest shadow-lg shadow-pink-500/20 disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    >
+                                        {syncing ? 'SYNCING DATA...' : 'INJECT RESULTS'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="bg-zinc-900/40 border border-zinc-800 rounded-2xl flex flex-col h-[400px]">
+                                <div className="p-4 border-b border-zinc-800 bg-zinc-900 flex justify-between items-center">
+                                    <span className="text-[9px] font-black uppercase italic text-pink-500 tracking-widest">Global Forum</span>
+                                    <input value={username} onChange={e => setUsername(e.target.value)} className="bg-black border border-zinc-800 text-[8px] px-2 py-1 w-20 rounded uppercase font-bold text-zinc-300 focus:border-pink-500 outline-none" />
+                                </div>
+                                <div className="flex-grow overflow-y-auto p-4 space-y-3 custom-scroll">
+                                    {messages.length === 0 ? (
+                                        <div className="text-[9px] font-black text-zinc-700 italic text-center py-10 uppercase tracking-widest">No transmissions found.</div>
+                                    ) : messages.map((msg, i) => (
+                                        <div key={msg.id || i} className="flex gap-2 items-start animate-fade-in">
+                                            <Avatar name={msg.author} size="sm" />
+                                            <div className="flex-grow">
+                                                <span className="text-[8px] font-black text-purple-500 uppercase italic block leading-none mb-1">{msg.author}</span>
+                                                <div className="bg-zinc-950 p-2 rounded-lg border border-white/5 text-[10px] font-bold text-zinc-400">{msg.text}</div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div ref={scrollRef}></div>
+                                </div>
+                                <form onSubmit={sendChatMessage} className="p-3 bg-black/40 border-t border-zinc-800 flex gap-2">
+                                    <input value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="ENCRYPTED MSG..." className="flex-grow bg-zinc-900 border border-zinc-800 rounded px-3 py-2 text-[10px] font-bold outline-none text-white focus:border-pink-600" />
+                                    <button type="submit" className="btn-aggressive px-3 py-1 rounded text-[9px] font-black uppercase">SEND</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
